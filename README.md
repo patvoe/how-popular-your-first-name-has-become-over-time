@@ -10,7 +10,7 @@ There are also amusing facts that can be discovered using the chart. For instanc
 
 **Data collection**:\
 The data I used:
-- combined_babynames.csv: <a href="https://catalog.data.gov/dataset/baby-names-from-social-security-card-applications-national-data">Baby Names from Social Security Card Applications - National Data. The data (name, year of birth, sex, and number) are from a 100 percent sample of Social Security card applications for 1880 onward.
+- combined_babynames.csv: <a href="https://catalog.data.gov/dataset/baby-names-from-social-security-card-applications-national-data">Baby Names from Social Security Card Applications - National Data</a>. The data (name, year of birth, sex, and number) are from a 100 percent sample of Social Security card applications for 1880 onward.
 
 **Data analysis**:\
 For each year, there is a text file with the names from that year. To perform analyses over time, I first had to merge all the files into a single file (combined_babynames.csv). My interactive line chart is intended to show the relative frequency of each boy’s and girl’s name over the years. I calculated the corresponding additional column with the percentage share in a Jupyter Notebook using Python and Pandas based on the frequency. Additionally, I needed a column with the name and gender combined, e.g., Andrea (M) or Andrea (F), which allows for differentiation by gender in the search field.
