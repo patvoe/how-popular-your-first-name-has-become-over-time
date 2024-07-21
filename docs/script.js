@@ -3,6 +3,7 @@ let allNames = []; // Array to store all unique names
 let filteredNamesCache = {}; // Cache for filtered names
 let selectedNames = ["John (M)", "Olivia (F)"]; // Default selected names
 let dataLoaded = false; // Flag to check if data is loaded
+let isDesktop = window.innerWidth > 640
 
 const defaultXDomain = [1880, 2023];
 const defaultYDomain = [0, 6]; // Example default range for y-axis
@@ -81,7 +82,7 @@ function filterNames(query) {
   if (filteredNamesCache[lowerCaseQuery]) {
     return filteredNamesCache[lowerCaseQuery];
   }
-  const filteredNames = allNames.filter(name => {
+  const filteredNames = allNames.filter((name) => {
     const nameWithoutLastThree = name.slice(0, -3).toLowerCase();
     return nameWithoutLastThree.includes(lowerCaseQuery);
   });
@@ -383,8 +384,15 @@ function displayChart(names) {
       d3.selectAll(".mouse-per-line text").style("opacity", "1");
     })
     .on("mousemove touchmove", function (event) {
-      // mouse moving over canvas
+      console.log("touchmove event triggered"); // Debug statement
       const mouse = d3.pointer(event);
+      console.log("Mouse coordinates:", mouse); // Debug statement
+      if (event.type === "touchmove") {
+        event.preventDefault(); // Prevent default behavior
+        const touch = event.touches[0];
+        mouse[0] = touch.clientX;
+        mouse[1] = touch.clientY;
+      }
       const xDate = x.invert(mouse[0]);
       const bisect = d3.bisector((d) => d.Year).left;
       const idx = bisect(nameData[0], xDate);
@@ -399,6 +407,11 @@ function displayChart(names) {
         const yearData = d[idx];
         const count = yearData ? yearData.Count : 0;
         const absoluteCount = yearData ? yearData.AbsoluteCount : 0;
+        console.log("Year Data:", yearData); // Debug statement
+        console.log(
+          "Transform:",
+          "translate(" + x(yearData.Year) + "," + y(count) + ")"
+        ); // Debug statement
         return "translate(" + x(yearData.Year) + "," + y(count) + ")";
       });
 
@@ -409,6 +422,7 @@ function displayChart(names) {
         absolute: d[idx] ? d[idx].AbsoluteCount : 0,
         color: colors[i],
       }));
+      console.log("Values:", values); // Debug statement
 
       showTooltip(
         event,
@@ -418,7 +432,8 @@ function displayChart(names) {
           AbsoluteCount: values.map((v) => v.absolute),
         },
         values.map((v) => v.name),
-        colors
+        colors,
+        x(nameData[0][idx].Year)
       );
     });
 
@@ -449,8 +464,15 @@ const mouseG = d3
   .append("g")
   .attr("class", "mouse-over-effects");
 
-function showTooltip(event, data, names, colors) {
-  tooltip.transition().duration(100).style("opacity", 0.9).style("display", "block");
+
+function showTooltip(event, data, names, colors, xPosition) {
+  console.log('Show tooltip:', data, xPosition); // Debug statement
+
+  // Ensure the tooltip is visible and has content before measuring
+  tooltip
+    .html('')
+    .style("opacity", 0.9)
+    .style("display", "block");
 
   const year = data.Year;
   const values = names
@@ -464,33 +486,50 @@ function showTooltip(event, data, names, colors) {
     .map(
       (v) =>
         `<tr>
-          <td style="color:${
-            v.color
-          }; vertical-align: top; white-space: nowrap;">${v.name}:</td>
-          <td style="display: flex; flex-direction: row; align-items: baseline; color:${
-            v.color
-          }; flex-wrap: wrap;">
+          <td style="color:${v.color}; vertical-align: top; white-space: nowrap;">${v.name}:</td>
+          <td style="display: flex; flex-direction: row; align-items: baseline; color:${v.color}; flex-wrap: wrap;">
             <div style="flex: 1;"><b>${v.count.toFixed(5)}%</b>&nbsp;</div>
-            <div style="flex: 1;" class="smallNumber">abs.&nbsp;${v.absolute
-              .toString()
-              .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</div>
+            <div style="flex: 1;" class="smallNumber">abs.&nbsp;${v.absolute.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</div>
           </td>
         </tr>`
     )
     .join("");
 
   const tooltipHtml = `<b class="Number">${year}</b><table>${values}</table>`;
+  console.log('Tooltip HTML:', tooltipHtml); // Debug statement
+
+  tooltip.html(tooltipHtml);
+
+  const tooltipWidth = tooltip.node().offsetWidth;
+  const pageWidth = window.innerWidth;
+
+  console.log('Tooltip Width:', tooltipWidth); // Debug statement
+  console.log('Page Width:', pageWidth); // Debug statement
+
+  // Determine the left position based on screen width
+  let leftPosition;
+  if (!isDesktop) { // Mobile view
+    leftPosition = (year > 1940
+      ? xPosition - (tooltipWidth / 2) - 25
+      : xPosition + (tooltipWidth / 2)) + "px";
+
+  } else { // Desktop view
+    leftPosition = (year > 1940
+      ? xPosition - 45
+      : xPosition + (tooltipWidth) - 20) + "px";
+  }
+  const topPosition = (event.pageY - 28) + "px";
+
+  console.log('Calculated Left Position:', leftPosition); // Debug statement
+  console.log('Calculated Top Position:', topPosition); // Debug statement
 
   tooltip
-    .html(tooltipHtml)
-    .style(
-      "left",
-      (year > 1940
-        ? event.pageX - tooltip.node().offsetWidth - 16
-        : event.pageX + 16) + "px"
-    )
-    .style("top", event.pageY - 28 + "px");
+    .style("left", leftPosition)
+    .style("top", topPosition);
+
+  console.log('Tooltip Position:', tooltip.style("left"), tooltip.style("top")); // Debug statement
 }
+
 function hideTooltip() {
   tooltip.transition().duration(500).style("opacity", 0);
 }
