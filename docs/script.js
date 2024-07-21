@@ -149,6 +149,7 @@ function addSelectedNameButtons() {
     nameInput.classList.remove("faded-out"); // Remove faded-out effect
   }
 }
+
 function displayChart(names) {
   const years = d3.range(1880, 2024); // Example range from 1880 to 2024
 
@@ -361,7 +362,7 @@ function displayChart(names) {
     .attr("height", height)
     .attr("fill", "none")
     .attr("pointer-events", "all")
-    .on("mouseout", function () {
+    .on("mouseout touchend", function () {
       // on mouse out hide line, circles and text
       d3.select(".mouse-line").style("opacity", "0");
       d3.selectAll(".mouse-per-line circle").style("opacity", "0");
@@ -375,9 +376,10 @@ function displayChart(names) {
       d3.selectAll(".mouse-per-line text").style("opacity", "1");
     })
     .on("mousemove touchmove", function (event) {
-      // mouse moving over canvas
-      const mouse = d3.pointer(event);
-      const xDate = x.invert(mouse[0]);
+      // Extract coordinates
+      const [mouseX, mouseY] = getCoordinates(event);
+      
+      const xDate = x.invert(mouseX);
       const bisect = d3.bisector((d) => d.Year).left;
       const idx = bisect(nameData[0], xDate);
 
@@ -441,12 +443,16 @@ const mouseG = d3
   .append("g")
   .attr("class", "mouse-over-effects");
 
+function getCoordinates(event) {
+  if (event.touches) {
+    return [event.touches[0].clientX, event.touches[0].clientY];
+  } else {
+    return [event.clientX, event.clientY];
+  }
+}
+
 function showTooltip(event, data, names, colors) {
-  tooltip
-    .transition()
-    .duration(100)
-    .style("opacity", 0.9)
-    .style("display", "block");
+  tooltip.transition().duration(100).style("opacity", 0.9).style("display", "block");
 
   const year = data.Year;
   const values = names
@@ -460,21 +466,22 @@ function showTooltip(event, data, names, colors) {
     .map(
       (v) =>
         `<tr>
-            <td style="color:${
-              v.color
-            }; vertical-align: top; white-space: nowrap;">${v.name}:</td>
-            <td style="display: flex; flex-direction: row; align-items: baseline; color:${
-              v.color
-            }; flex-wrap: wrap;">
-              <div style="flex: 1;"><b>${v.count.toFixed(5)}%</b>&nbsp;</div>
-              <div style="flex: 1;" class="smallNumber">abs.&nbsp;${v.absolute
-                .toString()
-                .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</div>
-            </td>
-          </tr>`
+          <td style="color:${
+            v.color
+          }; vertical-align: top; white-space: nowrap;">${v.name}:</td>
+          <td style="display: flex; flex-direction: row; align-items: baseline; color:${
+            v.color
+          }; flex-wrap: wrap;">
+            <div style="flex: 1;"><b>${v.count.toFixed(5)}%</b>&nbsp;</div>
+            <div style="flex: 1;" class="smallNumber">abs.&nbsp;${v.absolute
+              .toString()
+              .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</div>
+          </td>
+        </tr>`
     )
     .join("");
 
+  const [mouseX, mouseY] = getCoordinates(event);
   const tooltipHtml = `<b class="Number">${year}</b><table>${values}</table>`;
 
   tooltip
@@ -482,14 +489,16 @@ function showTooltip(event, data, names, colors) {
     .style(
       "left",
       (year > 1940
-        ? event.pageX - tooltip.node().offsetWidth - 16
-        : event.pageX + 16) + "px"
+        ? mouseX - tooltip.node().offsetWidth - 16
+        : mouseX + 16) + "px"
     )
-    .style("top", event.pageY - 28 + "px");
+    .style("top", mouseY - 28 + "px");
 }
+
 function hideTooltip() {
   tooltip.transition().duration(500).style("opacity", 0);
 }
+
 function debounce(func, wait) {
   let timeout;
   return function (...args) {
@@ -497,10 +506,12 @@ function debounce(func, wait) {
     timeout = setTimeout(() => func.apply(this, args), wait);
   };
 }
+
 function showLoadingText() {
   const nameInput = document.getElementById("nameInput");
   nameInput.placeholder = "Loading...";
 }
+
 function hideLoadingText() {
   const nameInput = document.getElementById("nameInput");
   nameInput.placeholder = "Search for a name...";
