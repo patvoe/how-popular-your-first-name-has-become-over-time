@@ -38,9 +38,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const query = this.value;
       setTimeout(() => {
         // Simulate loading delay
-        filteredNamesCache = filterNames(query);
-        console.log("Filtered names:", filteredNamesCache); // Debug statement
-        displayResults(filteredNamesCache);
+        if (query) {
+          filteredNamesCache = filterNames(query);
+          console.log("Filtered names:", filteredNamesCache); // Debug statement
+          displayResults(filteredNamesCache);
+        } else {
+          displayResults(allNames.slice(0, 50)); // Display a subset of names when input is empty
+        }
         hideLoadingText();
       }, 200); // Adjusted this delay to 200ms
     }, 300)
