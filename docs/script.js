@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
     debounce(function () {
       if (!dataLoaded) return; // If data is not loaded, return
       showLoadingText();
-      const query = this.value;
+      const query = this.value.toLowerCase();
       setTimeout(() => {
         // Simulate loading delay
         if (query) {
@@ -55,8 +55,9 @@ document.addEventListener("DOMContentLoaded", () => {
     showLoadingText();
     setTimeout(() => {
       // Simulate loading delay
-      if (nameInput.value) {
-        displayResults(filteredNamesCache[nameInput.value.toLowerCase()] || []);
+      const query = nameInput.value.toLowerCase();
+      if (query) {
+        displayResults(filteredNamesCache[query] || []);
       } else {
         displayResults(allNames.slice(0, 50)); // Display a subset of names initially
       }
@@ -80,7 +81,10 @@ function filterNames(query) {
   if (filteredNamesCache[lowerCaseQuery]) {
     return filteredNamesCache[lowerCaseQuery];
   }
-  const filteredNames = allNames.filter(name => name.toLowerCase().includes(lowerCaseQuery));
+  const filteredNames = allNames.filter(name => {
+    const nameWithoutLastThree = name.slice(0, -3).toLowerCase();
+    return nameWithoutLastThree.includes(lowerCaseQuery);
+  });
   filteredNamesCache[lowerCaseQuery] = filteredNames;
   return filteredNames;
 }
