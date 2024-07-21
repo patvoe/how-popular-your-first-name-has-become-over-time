@@ -226,7 +226,3 @@ pyrightconfig.json
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/python,macos,visualstudiocode
-
-
-./data/rat_sightings_20240701.csv
-./data/rat_sightings_20240625.csv

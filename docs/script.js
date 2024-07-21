@@ -1,6 +1,9 @@
 let allData = [];
 let allNames = []; // Array to store all unique names
+let filteredNamesCache = []; // Cache for filtered names
 let selectedNames = ["John (M)", "Olivia (F)"]; // Default selected names
+let dataLoaded = false; // Flag to check if data is loaded
+
 const defaultXDomain = [1880, 2023];
 const defaultYDomain = [0, 6]; // Example default range for y-axis
 
@@ -10,59 +13,64 @@ function loadData() {
       Name: d.name_with_gender.trim(),
       Year: +d.Year, // Make sure Year is properly parsed as a number
       Count: +d.share_percent, // Ensure Count is properly parsed as a number
+      AbsoluteCount: +d.Count,
     }));
     allNames = Array.from(new Set(allData.map((d) => d.Name))); // Populate allNames with unique names
+    console.log("Data loaded:", allData); // Debug statement
+    console.log("All names:", allNames); // Debug statement
+    filteredNamesCache = allNames; // Cache all names initially
+    dataLoaded = true; // Set flag to true once data is loaded
     displayChart(selectedNames); // Display chart for default names
     addSelectedNameButtons(); // Add buttons for default names
   });
 }
 
-const tooltip = d3
-  .select("body")
-  .append("div")
-  .attr("class", "tooltip")
-  .style("opacity", 0);
+document.addEventListener("DOMContentLoaded", () => {
+  loadData(); // Load data once when the DOM is fully loaded
 
-const mouseG = d3
-  .select("body")
-  .append("g")
-  .attr("class", "mouse-over-effects");
+  const nameInput = document.getElementById("nameInput");
+  const searchResults = document.getElementById("searchResults");
 
-function showTooltip(event, data, names, colors) {
-  tooltip.transition().duration(100).style("opacity", 0.9);
+  nameInput.addEventListener(
+    "input",
+    debounce(function () {
+      if (!dataLoaded) return; // If data is not loaded, return
+      showLoadingText();
+      const query = this.value;
+      setTimeout(() => {
+        // Simulate loading delay
+        filteredNamesCache = filterNames(query);
+        console.log("Filtered names:", filteredNamesCache); // Debug statement
+        displayResults(filteredNamesCache);
+        hideLoadingText();
+      }, 500); // Adjust this delay as needed
+    }, 300)
+  );
 
-  const year = data.Year;
-  const values = names
-    .map((name, index) => ({
-      name,
-      count: data.Count[index],
-      color: colors[index],
-    }))
-    .sort((a, b) => b.count - a.count)
-    .map(
-      (v) =>
-        `<span style="color:${v.color};">${v.name}: ${v.count.toFixed(
-          5
-        )}%</span>`
-    )
-    .join("<br/>");
+  nameInput.addEventListener("focus", function () {
+    if (!dataLoaded) return; // If data is not loaded, return
+    showLoadingText();
+    setTimeout(() => {
+      // Simulate loading delay
+      if (nameInput.value) {
+        displayResults(filteredNamesCache);
+      } else {
+        displayResults(allNames);
+      }
+      hideLoadingText();
+    }, 500); // Adjust this delay as needed
+    searchResults.style.display = "block";
+  });
 
-  const tooltipHtml = `<b class="Number">${year}</b>${values}`;
+  document.addEventListener("click", (event) => {
+    const isClickInside =
+      nameInput.contains(event.target) || searchResults.contains(event.target);
 
-  tooltip
-    .html(tooltipHtml)
-    .style(
-      "left",
-      (year > 1940
-        ? event.pageX - tooltip.node().offsetWidth - 15
-        : event.pageX + 15) + "px"
-    )
-    .style("top", event.pageY - 28 + "px");
-}
-
-function hideTooltip() {
-  tooltip.transition().duration(500).style("opacity", 0);
-}
+    if (!isClickInside) {
+      searchResults.style.display = "none";
+    }
+  });
+});
 
 function filterNames(query) {
   const uniqueNames = new Set();
@@ -77,57 +85,31 @@ function filterNames(query) {
 function displayResults(results) {
   const resultsContainer = document.getElementById("searchResults");
   resultsContainer.innerHTML = "";
-
   const list = document.createElement("ul");
-  const itemHeight = 30; // Approximate height of each list item
-  const visibleItemsCount = Math.ceil(
-    resultsContainer.clientHeight / itemHeight
-  );
-
-  let scrollTop = 0;
-  resultsContainer.addEventListener("scroll", () => {
-    scrollTop = resultsContainer.scrollTop;
-    renderList();
+  results.forEach((name) => {
+    const listItem = document.createElement("li");
+    listItem.textContent = name;
+    listItem.addEventListener("click", () => {
+      if (selectedNames.length < 2 && !selectedNames.includes(name)) {
+        selectedNames.push(name);
+        displayChart(selectedNames);
+        addSelectedNameButtons();
+      }
+      resultsContainer.style.display = "none";
+    });
+    list.appendChild(listItem);
   });
-
-  function renderList() {
-    const startIndex = Math.floor(scrollTop / itemHeight);
-    const endIndex = Math.min(startIndex + visibleItemsCount, results.length);
-
-    list.innerHTML = "";
-    for (let i = startIndex; i < endIndex; i++) {
-      const listItem = document.createElement("li");
-      listItem.textContent = results[i];
-      listItem.addEventListener("click", () => {
-        if (selectedNames.length < 2 && !selectedNames.includes(results[i])) {
-          selectedNames.push(results[i]);
-          displayChart(selectedNames);
-          addSelectedNameButtons();
-        }
-        resultsContainer.style.display = "none";
-      });
-      list.appendChild(listItem);
-    }
-  }
-
   resultsContainer.appendChild(list);
-  renderList();
   resultsContainer.style.display = "block";
-}
-
-function debounce(func, wait) {
-  let timeout;
-  return function (...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
 }
 
 function addSelectedNameButtons() {
   const selectedNameContainer = document.getElementById(
     "selectedNameContainer"
   );
+  const nameInput = document.getElementById("nameInput");
   selectedNameContainer.innerHTML = "";
+
   selectedNames.forEach((name) => {
     const button = document.createElement("button");
     button.className = "selected-name-button";
@@ -139,24 +121,34 @@ function addSelectedNameButtons() {
     closeButton.textContent = " x";
     closeButton.style.marginLeft = "8px";
     closeButton.style.cursor = "pointer";
-    closeButton.addEventListener("click", (event) => {
-      event.stopPropagation(); // Prevent the main button click event
-      selectedNames = selectedNames.filter((n) => n !== name);
-      displayChart(selectedNames);
-      addSelectedNameButtons();
-    });
 
     button.appendChild(buttonText);
     button.appendChild(closeButton);
 
+    // Add event listener to remove the name on button click
     button.addEventListener("click", () => {
-      // Optional: Do something when the main part of the button is clicked
+      selectedNames = selectedNames.filter((n) => n !== name);
+      displayChart(selectedNames);
+      addSelectedNameButtons();
+      nameInput.disabled = false; // Re-enable the input field
+      nameInput.classList.remove("faded-out"); // Remove faded-out effect
     });
 
     selectedNameContainer.appendChild(button);
   });
-}
 
+  // Update the placeholder text based on the length of selectedNames
+  if (selectedNames.length == 2) {
+    nameInput.placeholder =
+      "Max. of 2 names selected (Delete one to add another)";
+    nameInput.disabled = true; // Disable the input field
+    nameInput.classList.add("faded-out"); // Add faded-out effect
+  } else {
+    nameInput.placeholder = "Search for a name...";
+    nameInput.disabled = false; // Enable the input field
+    nameInput.classList.remove("faded-out"); // Remove faded-out effect
+  }
+}
 function displayChart(names) {
   const years = d3.range(1880, 2024); // Example range from 1880 to 2024
 
@@ -166,10 +158,11 @@ function displayChart(names) {
     return years.map((year) => ({
       Year: year,
       Count: dataMap.get(year) ? dataMap.get(year).Count : 0, // Use 0 if no data for that year
+      AbsoluteCount: dataMap.get(year) ? dataMap.get(year).AbsoluteCount : 0,
     }));
   });
 
-  const margin = { top: 20, right: 15, bottom: 30, left: 68 };
+  const margin = { top: 47, right: 10, bottom: 30, left: 68 };
   const width =
     document.querySelector(".chart-container").clientWidth -
     margin.left -
@@ -221,10 +214,39 @@ function displayChart(names) {
     .append("g")
     .attr("class", "x axis-grid")
     .attr("transform", `translate(0,${height})`)
-    .call(d3.axisBottom(x).ticks(4).tickFormat(d3.format("d")))
-    .classed("axis text", true)
+    .call(d3.axisBottom(x).ticks(4).tickSize(0).tickFormat(d3.format("d")))
+    .classed("x axis text", true)
     .style("font-size", "14px")
     .style("font-family", "'IBM Plex Sans', sans-serif");
+
+  chart
+    .selectAll("text")
+    .attr("class", "x axis text")
+    .attr("dy", "1.25em") // Move the text down
+    .style("color", "#7D7D7D");
+
+  chart
+    .selectAll("g.tick")
+    .append("line")
+    .classed("grid-line", true)
+    .attr("stroke", "#d4d4d4") // Adjust the color of the grid lines if needed
+    .attr("y1", -height)
+    .attr("y2", 0)
+    .attr("x1", 0)
+    .attr("stroke-width", "0.75");
+  // .attr("stroke-dasharray", "4,2");
+
+  // Custom function to draw y-axis grid lines extended to the left
+  function drawYAxis(g) {
+    g.call(d3.axisLeft(y).ticks(4).tickSize(-width).tickFormat(""));
+    g.selectAll(".tick line")
+      .attr("x1", -margin.left) // Extend the grid lines to the left
+      .attr("stroke", "#d4d4d4") // Adjust the color of the grid lines if needed
+      // .attr("stroke-dasharray", "4,2");
+      .attr("stroke-width", "0.75");
+  }
+
+  chart.append("g").attr("class", "y axis-grid").call(drawYAxis);
 
   chart
     .append("g")
@@ -240,17 +262,43 @@ function displayChart(names) {
     .classed("axis text", true)
     .style("font-size", "14px")
     .style("font-family", "'IBM Plex Sans', sans-serif")
-    .attr("dx", "-5") // Move text x pixels to the left
+    .attr("text-anchor", "start")
+    .attr("dx", -margin.left + 5) // Move text x pixels to the left
+    .attr("dy", "-.5em") // Move text up above the tick lines
     .filter((d) => d === 0) // Filter out the 0 tick text
     .remove();
 
-  chart.append("g").attr("class", "y axis-grid").call(
-    d3
-      .axisLeft(y)
-      .ticks(4) // Customize the number of y-ticks here
-      .tickSize(-width)
-      .tickFormat("")
-  );
+  // Add the y-axis label above the first tick
+  chart
+    .append("text")
+    .attr("class", "y axis-label")
+    .attr("text-anchor", "start")
+    .attr("x", -margin.left)
+    .style("fill", "#7D7D7D")
+    .attr("y", -37) // Adjust this value to move the label as needed
+    .text("↑ share of male/female baby names");
+
+  // Add the text " of men" to the last y-axis tick
+  // Update the text of the last y-axis tick to include " of men"
+
+  // chart
+  //   .select(".y.axis-grid .tick:last-of-type text")
+  //   .style("font-size", "12px")
+  //   .style("font-family", "'IBM Plex Sans', sans-serif")
+  //   .attr("text-anchor", "start")
+  //   .attr("dx", -margin.left + 72) // Move text x pixels to the left
+  //   .attr("dy", "-.5em") // Move text up above the tick lines
+  //   .text(function (d) {
+  //     return "of men/woman";
+  //   });
+
+  // chart.append("g").attr("class", "y axis-grid").call(
+  //   d3
+  //     .axisLeft(y)
+  //     .ticks(4) // Customize the number of y-ticks here
+  //     .tickSize(-width - margin.left) // Extend the grid lines to the left edge
+  //     .tickFormat("")
+  // );
 
   // Remove y-axis and x-axis tick lines and domain
   chart.selectAll(".domain").remove();
@@ -258,12 +306,12 @@ function displayChart(names) {
   // Add solid 0 x-axis line
   chart
     .append("line")
-    .attr("x1", 0)
+    .attr("x1", -margin.left)
     .attr("x2", width)
     .attr("y1", y(0))
     .attr("y2", y(0))
-    .attr("stroke", "black")
-    .attr("stroke-width", 1);
+    .attr("stroke", "#7D7D7D")
+    .attr("stroke-width", 1.25);
 
   const colors = ["#A757A3", "#2CA29F"];
 
@@ -287,6 +335,7 @@ function displayChart(names) {
     .attr("class", "mouse-line")
     .style("stroke", "black")
     .style("stroke-width", "1px")
+    .style("stroke-dasharray", "3,3")
     .style("opacity", "0");
 
   const mousePerLine = mouseG
@@ -325,7 +374,7 @@ function displayChart(names) {
       d3.selectAll(".mouse-per-line circle").style("opacity", "1");
       d3.selectAll(".mouse-per-line text").style("opacity", "1");
     })
-    .on("mousemove", function (event) {
+    .on("mousemove touchmove", function (event) {
       // mouse moving over canvas
       const mouse = d3.pointer(event);
       const xDate = x.invert(mouse[0]);
@@ -341,6 +390,7 @@ function displayChart(names) {
       d3.selectAll(".mouse-per-line").attr("transform", function (d, i) {
         const yearData = d[idx];
         const count = yearData ? yearData.Count : 0;
+        const absoluteCount = yearData ? yearData.AbsoluteCount : 0;
         return "translate(" + x(yearData.Year) + "," + y(count) + ")";
       });
 
@@ -348,12 +398,17 @@ function displayChart(names) {
       const values = nameData.map((d, i) => ({
         name: names[i],
         count: d[idx] ? d[idx].Count : 0,
+        absolute: d[idx] ? d[idx].AbsoluteCount : 0,
         color: colors[i],
       }));
 
       showTooltip(
         event,
-        { Year: year, Count: values.map((v) => v.count) },
+        {
+          Year: year,
+          Count: values.map((v) => v.count),
+          AbsoluteCount: values.map((v) => v.absolute),
+        },
         values.map((v) => v.name),
         colors
       );
@@ -374,90 +429,75 @@ function displayChart(names) {
     .on("mouseout", hideTooltip);
 }
 
-document.getElementById("nameInput").addEventListener(
-  "input",
-  debounce(function () {
-    const query = this.value;
-    const filteredNames = filterNames(query);
-    displayResults(filteredNames);
-  }, 300)
-);
+const tooltip = d3
+  .select("body")
+  .append("div")
+  .attr("class", "tooltip")
+  .style("opacity", 0)
+  .style("display", "none");
 
-document.getElementById("nameInput").addEventListener("focus", function () {
-  displayResults(allNames); // Display all names on focus if input is empty
-  document.getElementById("searchResults").style.display = "block";
-});
+const mouseG = d3
+  .select("body")
+  .append("g")
+  .attr("class", "mouse-over-effects");
 
-loadData();
+function showTooltip(event, data, names, colors) {
+  tooltip.transition().duration(100).style("opacity", 0.9).style("display", "block");
 
-document.addEventListener("click", function (event) {
-  const nameInput = document.getElementById("nameInput");
-  const searchResults = document.getElementById("searchResults");
-  const isClickInside =
-    nameInput.contains(event.target) || searchResults.contains(event.target);
+  const year = data.Year;
+  const values = names
+    .map((name, index) => ({
+      name,
+      count: data.Count[index],
+      absolute: data.AbsoluteCount[index],
+      color: colors[index],
+    }))
+    .sort((a, b) => b.count - a.count)
+    .map(
+      (v) =>
+        `<tr>
+          <td style="color:${
+            v.color
+          }; vertical-align: top; white-space: nowrap;">${v.name}:</td>
+          <td style="display: flex; flex-direction: row; align-items: baseline; color:${
+            v.color
+          }; flex-wrap: wrap;">
+            <div style="flex: 1;"><b>${v.count.toFixed(5)}%</b>&nbsp;</div>
+            <div style="flex: 1;" class="smallNumber">abs.&nbsp;${v.absolute
+              .toString()
+              .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</div>
+          </td>
+        </tr>`
+    )
+    .join("");
 
-  if (!isClickInside) {
-    searchResults.style.display = "none";
-  }
-});
+  const tooltipHtml = `<b class="Number">${year}</b><table>${values}</table>`;
 
-document.addEventListener("DOMContentLoaded", (event) => {
-  const nameInput = document.getElementById("nameInput");
-  const searchResults = document.getElementById("searchResults");
-
-  document.addEventListener("click", function (event) {
-    const isClickInside =
-      nameInput.contains(event.target) || searchResults.contains(event.target);
-
-    if (!isClickInside) {
-      searchResults.style.display = "none";
-    }
-  });
-
-  nameInput.addEventListener("focus", function () {
-    if (nameInput.value) {
-      const filteredNames = filterNames(nameInput.value);
-      displayResults(filteredNames);
-    } else {
-      displayResults(allNames);
-    }
-    searchResults.style.display = "block";
-  });
-
-  nameInput.addEventListener("input", function () {
-    const query = this.value;
-    const filteredNames = filterNames(query);
-    displayResults(filteredNames);
-  });
-});
-
-function filterNames(query) {
-  const uniqueNames = new Set();
-  allData.forEach((d) => {
-    if (d.Name.toLowerCase().includes(query.toLowerCase())) {
-      uniqueNames.add(d.Name);
-    }
-  });
-  return Array.from(uniqueNames);
+  tooltip
+    .html(tooltipHtml)
+    .style(
+      "left",
+      (year > 1940
+        ? event.pageX - tooltip.node().offsetWidth - 16
+        : event.pageX + 16) + "px"
+    )
+    .style("top", event.pageY - 28 + "px");
 }
-
-function displayResults(results) {
-  const resultsContainer = document.getElementById("searchResults");
-  resultsContainer.innerHTML = "";
-  const list = document.createElement("ul");
-  results.forEach((name) => {
-    const listItem = document.createElement("li");
-    listItem.textContent = name;
-    listItem.addEventListener("click", () => {
-      if (selectedNames.length < 2 && !selectedNames.includes(name)) {
-        selectedNames.push(name);
-        displayChart(selectedNames);
-        addSelectedNameButtons();
-      }
-      resultsContainer.style.display = "none";
-    });
-    list.appendChild(listItem);
-  });
-  resultsContainer.appendChild(list);
-  resultsContainer.style.display = "block";
+function hideTooltip() {
+  tooltip.transition().duration(500).style("opacity", 0);
+}
+function debounce(func, wait) {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+function showLoadingText() {
+  const nameInput = document.getElementById("nameInput");
+  nameInput.placeholder = "Loading...";
+}
+function hideLoadingText() {
+  const nameInput = document.getElementById("nameInput");
+  nameInput.placeholder = "Search for a name...";
 }
