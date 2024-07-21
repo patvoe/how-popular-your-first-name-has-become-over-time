@@ -1,6 +1,6 @@
 let allData = [];
 let allNames = []; // Array to store all unique names
-let filteredNamesCache = []; // Cache for filtered names
+let filteredNamesCache = {}; // Cache for filtered names
 let selectedNames = ["John (M)", "Olivia (F)"]; // Default selected names
 let dataLoaded = false; // Flag to check if data is loaded
 
@@ -18,7 +18,6 @@ function loadData() {
     allNames = Array.from(new Set(allData.map((d) => d.Name))); // Populate allNames with unique names
     console.log("Data loaded:", allData); // Debug statement
     console.log("All names:", allNames); // Debug statement
-    filteredNamesCache = allNames; // Cache all names initially
     dataLoaded = true; // Set flag to true once data is loaded
     displayChart(selectedNames); // Display chart for default names
     addSelectedNameButtons(); // Add buttons for default names
@@ -43,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("Filtered names:", filteredNamesCache); // Debug statement
         displayResults(filteredNamesCache);
         hideLoadingText();
-      }, 500); // Adjust this delay as needed
+      }, 200); // Adjusted this delay to 200ms
     }, 300)
   );
 
@@ -53,12 +52,12 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
       // Simulate loading delay
       if (nameInput.value) {
-        displayResults(filteredNamesCache);
+        displayResults(filteredNamesCache[nameInput.value.toLowerCase()] || []);
       } else {
         displayResults(allNames);
       }
       hideLoadingText();
-    }, 500); // Adjust this delay as needed
+    }, 200); // Adjusted this delay to 200ms
     searchResults.style.display = "block";
   });
 
@@ -73,13 +72,13 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function filterNames(query) {
-  const uniqueNames = new Set();
-  allData.forEach((d) => {
-    if (d.Name.toLowerCase().includes(query.toLowerCase())) {
-      uniqueNames.add(d.Name);
-    }
-  });
-  return Array.from(uniqueNames);
+  const lowerCaseQuery = query.toLowerCase();
+  if (filteredNamesCache[lowerCaseQuery]) {
+    return filteredNamesCache[lowerCaseQuery];
+  }
+  const filteredNames = allNames.filter(name => name.toLowerCase().includes(lowerCaseQuery));
+  filteredNamesCache[lowerCaseQuery] = filteredNames;
+  return filteredNames;
 }
 
 function displayResults(results) {
@@ -149,6 +148,7 @@ function addSelectedNameButtons() {
     nameInput.classList.remove("faded-out"); // Remove faded-out effect
   }
 }
+
 function displayChart(names) {
   const years = d3.range(1880, 2024); // Example range from 1880 to 2024
 
