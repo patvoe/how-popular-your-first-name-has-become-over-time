@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
           console.log("Filtered names:", filteredNamesCache); // Debug statement
           displayResults(filteredNamesCache);
         } else {
-          displayResults(allNames.slice(0, 50)); // Display a subset of names when input is empty
+          displayResults(allNames.slice(0, 30)); // Display a subset of names when input is empty
         }
         hideLoadingText();
       }, 200); // Adjusted this delay to 200ms
@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (query) {
         displayResults(filteredNamesCache[query] || []);
       } else {
-        displayResults(allNames.slice(0, 50)); // Display a subset of names initially
+        displayResults(allNames.slice(0, 30)); // Display a subset of names initially
       }
       hideLoadingText();
     }, 200); // Adjusted this delay to 200ms
