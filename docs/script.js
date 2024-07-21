@@ -356,7 +356,7 @@ function displayChart(names) {
   mousePerLine.append("text").attr("transform", "translate(10,3)");
 
   mouseG
-    .append("svg:rect") // append a rect to catch mouse movements on canvas
+    .append("rect") // append a rect to catch mouse movements on canvas
     .attr("width", width)
     .attr("height", height)
     .attr("fill", "none")
@@ -442,7 +442,11 @@ const mouseG = d3
   .attr("class", "mouse-over-effects");
 
 function showTooltip(event, data, names, colors) {
-  tooltip.transition().duration(100).style("opacity", 0.9).style("display", "block");
+  tooltip
+    .transition()
+    .duration(100)
+    .style("opacity", 0.9)
+    .style("display", "block");
 
   const year = data.Year;
   const values = names
@@ -456,18 +460,18 @@ function showTooltip(event, data, names, colors) {
     .map(
       (v) =>
         `<tr>
-          <td style="color:${
-            v.color
-          }; vertical-align: top; white-space: nowrap;">${v.name}:</td>
-          <td style="display: flex; flex-direction: row; align-items: baseline; color:${
-            v.color
-          }; flex-wrap: wrap;">
-            <div style="flex: 1;"><b>${v.count.toFixed(5)}%</b>&nbsp;</div>
-            <div style="flex: 1;" class="smallNumber">abs.&nbsp;${v.absolute
-              .toString()
-              .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</div>
-          </td>
-        </tr>`
+            <td style="color:${
+              v.color
+            }; vertical-align: top; white-space: nowrap;">${v.name}:</td>
+            <td style="display: flex; flex-direction: row; align-items: baseline; color:${
+              v.color
+            }; flex-wrap: wrap;">
+              <div style="flex: 1;"><b>${v.count.toFixed(5)}%</b>&nbsp;</div>
+              <div style="flex: 1;" class="smallNumber">abs.&nbsp;${v.absolute
+                .toString()
+                .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</div>
+            </td>
+          </tr>`
     )
     .join("");
 
