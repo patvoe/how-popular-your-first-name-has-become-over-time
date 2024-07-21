@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (nameInput.value) {
         displayResults(filteredNamesCache[nameInput.value.toLowerCase()] || []);
       } else {
-        displayResults(allNames);
+        displayResults(allNames.slice(0, 50)); // Display a subset of names initially
       }
       hideLoadingText();
     }, 200); // Adjusted this delay to 200ms
