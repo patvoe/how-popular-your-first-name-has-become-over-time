@@ -368,7 +368,7 @@ function displayChart(names) {
       d3.selectAll(".mouse-per-line text").style("opacity", "0");
       hideTooltip();
     })
-    .on("mouseover", function () {
+    .on("mouseover touchstart", function () {
       // on mouse in show line, circles and text
       d3.select(".mouse-line").style("opacity", "1");
       d3.selectAll(".mouse-per-line circle").style("opacity", "1");
