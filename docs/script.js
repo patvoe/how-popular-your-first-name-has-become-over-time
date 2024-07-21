@@ -149,7 +149,6 @@ function addSelectedNameButtons() {
     nameInput.classList.remove("faded-out"); // Remove faded-out effect
   }
 }
-
 function displayChart(names) {
   const years = d3.range(1880, 2024); // Example range from 1880 to 2024
 
@@ -357,29 +356,28 @@ function displayChart(names) {
   mousePerLine.append("text").attr("transform", "translate(10,3)");
 
   mouseG
-    .append("rect") // append a rect to catch mouse movements on canvas
+    .append("svg:rect") // append a rect to catch mouse movements on canvas
     .attr("width", width)
     .attr("height", height)
     .attr("fill", "none")
     .attr("pointer-events", "all")
-    .on("mouseout touchend", function () {
+    .on("mouseout", function () {
       // on mouse out hide line, circles and text
       d3.select(".mouse-line").style("opacity", "0");
       d3.selectAll(".mouse-per-line circle").style("opacity", "0");
       d3.selectAll(".mouse-per-line text").style("opacity", "0");
       hideTooltip();
     })
-    .on("mouseover touchstart", function () {
+    .on("mouseover", function () {
       // on mouse in show line, circles and text
       d3.select(".mouse-line").style("opacity", "1");
       d3.selectAll(".mouse-per-line circle").style("opacity", "1");
       d3.selectAll(".mouse-per-line text").style("opacity", "1");
     })
     .on("mousemove touchmove", function (event) {
-      // Extract coordinates
-      const [mouseX, mouseY] = getCoordinates(event);
-      
-      const xDate = x.invert(mouseX);
+      // mouse moving over canvas
+      const mouse = d3.pointer(event);
+      const xDate = x.invert(mouse[0]);
       const bisect = d3.bisector((d) => d.Year).left;
       const idx = bisect(nameData[0], xDate);
 
@@ -443,14 +441,6 @@ const mouseG = d3
   .append("g")
   .attr("class", "mouse-over-effects");
 
-function getCoordinates(event) {
-  if (event.touches) {
-    return [event.touches[0].clientX, event.touches[0].clientY];
-  } else {
-    return [event.clientX, event.clientY];
-  }
-}
-
 function showTooltip(event, data, names, colors) {
   tooltip.transition().duration(100).style("opacity", 0.9).style("display", "block");
 
@@ -481,7 +471,6 @@ function showTooltip(event, data, names, colors) {
     )
     .join("");
 
-  const [mouseX, mouseY] = getCoordinates(event);
   const tooltipHtml = `<b class="Number">${year}</b><table>${values}</table>`;
 
   tooltip
@@ -489,16 +478,14 @@ function showTooltip(event, data, names, colors) {
     .style(
       "left",
       (year > 1940
-        ? mouseX - tooltip.node().offsetWidth - 16
-        : mouseX + 16) + "px"
+        ? event.pageX - tooltip.node().offsetWidth - 16
+        : event.pageX + 16) + "px"
     )
-    .style("top", mouseY - 28 + "px");
+    .style("top", event.pageY - 28 + "px");
 }
-
 function hideTooltip() {
   tooltip.transition().duration(500).style("opacity", 0);
 }
-
 function debounce(func, wait) {
   let timeout;
   return function (...args) {
@@ -506,12 +493,10 @@ function debounce(func, wait) {
     timeout = setTimeout(() => func.apply(this, args), wait);
   };
 }
-
 function showLoadingText() {
   const nameInput = document.getElementById("nameInput");
   nameInput.placeholder = "Loading...";
 }
-
 function hideLoadingText() {
   const nameInput = document.getElementById("nameInput");
   nameInput.placeholder = "Search for a name...";
