@@ -162,7 +162,7 @@ function displayChart(names) {
     }));
   });
 
-  const margin = { top: 47, right: 10, bottom: 30, left: 68 };
+  const margin = { top: 47, right: 14, bottom: 30, left: 68 };
   const width =
     document.querySelector(".chart-container").clientWidth -
     margin.left -
