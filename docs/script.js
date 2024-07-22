@@ -81,7 +81,7 @@ function filterNames(query) {
   if (filteredNamesCache[lowerCaseQuery]) {
     return filteredNamesCache[lowerCaseQuery];
   }
-  const filteredNames = allNames.filter(name => {
+  const filteredNames = allNames.filter((name) => {
     const nameWithoutLastThree = name.slice(0, -3).toLowerCase();
     return nameWithoutLastThree.includes(lowerCaseQuery);
   });
@@ -242,7 +242,6 @@ function displayChart(names) {
     .attr("y2", 0)
     .attr("x1", 0)
     .attr("stroke-width", "0.75");
-  // .attr("stroke-dasharray", "4,2");
 
   // Custom function to draw y-axis grid lines extended to the left
   function drawYAxis(g) {
@@ -250,7 +249,6 @@ function displayChart(names) {
     g.selectAll(".tick line")
       .attr("x1", -margin.left) // Extend the grid lines to the left
       .attr("stroke", "#d4d4d4") // Adjust the color of the grid lines if needed
-      // .attr("stroke-dasharray", "4,2");
       .attr("stroke-width", "0.75");
   }
 
@@ -383,11 +381,16 @@ function displayChart(names) {
       d3.selectAll(".mouse-per-line text").style("opacity", "1");
     })
     .on("mousemove touchmove", function (event) {
-      // mouse moving over canvas
       const mouse = d3.pointer(event);
       const xDate = x.invert(mouse[0]);
       const bisect = d3.bisector((d) => d.Year).left;
       const idx = bisect(nameData[0], xDate);
+
+      // Check if year is within required range
+      if (xDate < 1879 || xDate > 2023) {
+        hideTooltip();
+        return;
+      }
 
       d3.select(".mouse-line").attr("d", function () {
         let d = "M" + x(nameData[0][idx].Year) + "," + height;
@@ -404,7 +407,7 @@ function displayChart(names) {
 
       const year = nameData[0][idx].Year;
       const values = nameData.map((d, i) => ({
-        name: names[i],
+        name: selectedNames[i],
         count: d[idx] ? d[idx].Count : 0,
         absolute: d[idx] ? d[idx].AbsoluteCount : 0,
         color: colors[i],
@@ -438,20 +441,13 @@ function displayChart(names) {
 }
 
 const tooltip = d3
-  .select("body")
+  .select("#chart")
   .append("div")
   .attr("class", "tooltip")
   .style("opacity", 0)
   .style("display", "none");
 
-const mouseG = d3
-  .select("body")
-  .append("g")
-  .attr("class", "mouse-over-effects");
-
 function showTooltip(event, data, names, colors) {
-  tooltip.transition().duration(100).style("opacity", 0.9).style("display", "block");
-
   const year = data.Year;
   const values = names
     .map((name, index) => ({
@@ -481,19 +477,47 @@ function showTooltip(event, data, names, colors) {
 
   const tooltipHtml = `<b class="Number">${year}</b><table>${values}</table>`;
 
+  // Get the bounding rectangle of the chart container
+  const chartRect = document.getElementById("chart").getBoundingClientRect();
+
+  const mouseX = event.offsetX;
+  const mouseY = event.offsetY;
+
+  // console.log("chartRect:", chartRect);
+  // console.log("mouseX:", mouseX);
+  // console.log("mouseY:", mouseY);
+
+  const tooltipX =
+    year > 1940
+      ? mouseX -
+        tooltip.node().offsetWidth / 2 -
+        tooltip.node().offsetWidth / 2 -
+        14 +
+        "px"
+      : mouseX -
+        tooltip.node().offsetWidth / 2 +
+        tooltip.node().offsetWidth / 2 +
+        15 +
+        "px";
+
   tooltip
     .html(tooltipHtml)
-    .style(
-      "left",
-      (year > 1940
-        ? event.pageX - tooltip.node().offsetWidth - 16
-        : event.pageX + 16) + "px"
-    )
-    .style("top", event.pageY - 28 + "px");
+    .style("left", tooltipX)
+    .style("top", mouseY - tooltip.node().offsetHeight - 0 + "px")
+    .transition()
+    .duration(100)
+    .style("opacity", 0.9)
+    .style("display", "block");
 }
+
 function hideTooltip() {
-  tooltip.transition().duration(500).style("opacity", 0);
+  tooltip
+    .transition()
+    .duration(500)
+    .style("opacity", 0)
+    .on("end", () => tooltip.style("display", "none"));
 }
+
 function debounce(func, wait) {
   let timeout;
   return function (...args) {
@@ -501,10 +525,12 @@ function debounce(func, wait) {
     timeout = setTimeout(() => func.apply(this, args), wait);
   };
 }
+
 function showLoadingText() {
   const nameInput = document.getElementById("nameInput");
   nameInput.placeholder = "Loading...";
 }
+
 function hideLoadingText() {
   const nameInput = document.getElementById("nameInput");
   nameInput.placeholder = "Search for a name...";
